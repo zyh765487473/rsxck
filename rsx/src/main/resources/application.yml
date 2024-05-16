@@ -1,0 +1,31 @@
+server:
+    port: 8081
+
+spring:
+    datasource:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://localhost:3306/rsx?characterEncoding=utf-8
+        username: root
+        password: 1
+    jpa:
+        show-sql: true
+        generate-ddl: true
+        open-in-view: false
+
+pay:
+    paypal:
+        clientId: ARsUMwAkvhXntEC1lM4XAwtNhnuvGB3Y-UYIef2ge9RRDjR8fkm1MHcsWCURTXdYMjBHOa0x1EZ8ByEf
+        clientSecret: EBtpT3Oer8QvifvXku_PxjoD9bk5ClbweGvuD0EVaMv7ZAPk3DxU3YWxJ3_KkTu1XDQMFuklBIxQYYjp
+        #    支付成功跳转的页面路径（前端页面跳转到支付成功页面）
+        PAYPAL_SUCCESS_PAGE: http://127.0.0.1:8081/success
+        #    支付成功跳转的页面路径  (前端页面跳转到取消支付页面)
+        PAYPAL_CANCEL_PAGE: http://127.0.0.1:8081/cancel
+        #    支付成功回调
+        PAYPAL_SUCCESS_URL: http://127.0.0.1:8081/paypal/success
+        #    支付失败回调
+        PAYPAL_CANCEL_URL: http://127.0.0.1:8081/paypal/cancel
+        #  测试用mode  生产用 live
+        mode: sandbox
+        md5_str: ujghbkvd
+
+
