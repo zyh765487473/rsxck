@@ -3,6 +3,7 @@ package com.qfwebsite.rsx.request;
 import com.sun.istack.NotNull;
 
 import javax.validation.constraints.NotBlank;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,6 +19,12 @@ public class OrderInfoRequest {
      */
     @NotBlank
     private String email;
+
+    /**
+     * 产品ID
+     */
+    @NotBlank
+    private String productId;
 
     /**
      * 国家
@@ -240,7 +247,17 @@ public class OrderInfoRequest {
         return md5;
     }
 
+    public @NotBlank String getProductId() {
+        return productId;
+    }
+
+    public void setProductId(@NotBlank String productId) {
+        this.productId = productId;
+    }
+
     public void setMd5(@NotBlank String md5) {
         this.md5 = md5;
+
+
     }
 }

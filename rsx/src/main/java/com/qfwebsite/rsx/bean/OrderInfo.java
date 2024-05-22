@@ -53,6 +53,12 @@ public class OrderInfo implements Serializable {
     private String paypalId;
 
     /**
+     * 商品ID
+     */
+    @Column(name = "product_id", columnDefinition = "VARCHAR(50) NOT NULL COMMENT '商品ID'")
+    private String productId;
+
+    /**
      * paypal的订单token
      */
     @Column(name = "paypal_token", columnDefinition = "VARCHAR(50) NOT NULL COMMENT 'paypal的订单token'")
@@ -340,5 +346,13 @@ public class OrderInfo implements Serializable {
 
     public void setPaypalToken(String paypalToken) {
         this.paypalToken = paypalToken;
+    }
+
+    public String getProductId() {
+        return productId;
+    }
+
+    public void setProductId(String productId) {
+        this.productId = productId;
     }
 }

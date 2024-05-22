@@ -5,11 +5,13 @@ import com.paypal.api.payments.*;
 import com.paypal.base.rest.APIContext;
 import com.paypal.base.rest.PayPalRESTException;
 import com.qfwebsite.rsx.bean.OrderInfo;
+import com.qfwebsite.rsx.bean.Product;
 import com.qfwebsite.rsx.register.PaypalConfig;
 import com.qfwebsite.rsx.register.PaypalPaymentIntent;
 import com.qfwebsite.rsx.register.PaypalPaymentMethod;
 import com.qfwebsite.rsx.request.OrderInfoRequest;
 import com.qfwebsite.rsx.service.OrderInfoService;
+import com.qfwebsite.rsx.service.ProductService;
 import com.qfwebsite.rsx.utils.*;
 import io.swagger.annotations.Api;
 import org.slf4j.Logger;
@@ -26,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@Api(tags = "用户登陆注册")
+@Api(tags = "paypal购买接口")
 @RestController
 public class PayPalController {
     private Logger log = LoggerFactory.getLogger(getClass());
@@ -51,16 +53,25 @@ public class PayPalController {
     @Autowired
     private OrderInfoService orderInfoService;
 
+    @Autowired
+    private ProductService productService;
+
     @PostMapping("/paypal/pay")
     public SimpleResponse toPay(@RequestBody @Valid OrderInfoRequest orderInfoRequest) {
         try {
             // 1. 校验请求参数是否正确
-            if (!ParameterVerification(orderInfoRequest)) {
+            if (!parameterVerification(orderInfoRequest)) {
                 return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "param error");
             }
-
-            // 2. 价格转化
+            // 价格转化
             BigDecimal payAmount = new BigDecimal(orderInfoRequest.getOrderPrice());
+            BigDecimal price = new BigDecimal(orderInfoRequest.getPrice());
+
+            // 2. 校验商品信息
+            if (!productVerification(orderInfoRequest.getProductId(), price.doubleValue())) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "product error");
+            }
+
 
             // 3. 购买下单
             Map<String, String> otherInfo = orderInfoRequest.getOtherInfo();
@@ -94,7 +105,7 @@ public class PayPalController {
 
             // 4. 保存paypal预支付信息
             orderInfoService.saveOrderInfo(orderInfoRequest, payment.getId(), param.get("token"));
-            return ResponseUtils.createOkResponse(HttpCode.SUCCESS, url);
+            return ResponseUtils.createOkResponse(url);
 
         } catch (PayPalRESTException e) {
             log.error(e.getMessage());
@@ -215,16 +226,30 @@ public class PayPalController {
     /**
      * 参数校验
      */
-    public boolean ParameterVerification(OrderInfoRequest orderInfoRequest) {
+    public boolean parameterVerification(OrderInfoRequest orderInfoRequest) {
         String country = orderInfoRequest.getCountry();
         String orderPrice = orderInfoRequest.getOrderPrice();
         String email = orderInfoRequest.getEmail();
         String phone = orderInfoRequest.getPhone();
         String code = orderInfoRequest.getCode();
-        String str = orderPrice + email + code + phone + country + MD5_STR;
+        String productId = orderInfoRequest.getProductId();
+        String str = orderPrice + email + code + phone + country + productId + MD5_STR;
         String pa = CryptoUtils.MD5(str);
         log.info("str:{}", str);
         log.info("pa:{}", pa);
         return pa.equals(orderInfoRequest.getMd5());
+    }
+
+    /**
+     * 商品校验
+     */
+    public boolean productVerification(String productId, double price) {
+        Product product = productService.getProduct(productId, Product.LISTED);
+        if (null == product) {
+            return false;
+        }
+        // 价格转化
+        BigDecimal p = new BigDecimal(product.getPrice());
+        return p.doubleValue() == price;
     }
 }
