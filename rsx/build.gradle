@@ -19,18 +19,18 @@ dependencies {
     // https://mvnrepository.com/artifact/org.hibernate/hibernate-validator
     implementation 'org.hibernate:hibernate-validator:8.0.1.Final'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    compileOnly "org.projectlombok:lombok:1.16.16"
-    compileOnly 'com.paypal.sdk:rest-api-sdk:1.14.0'
+    implementation "org.projectlombok:lombok:1.16.16"
+    implementation 'com.paypal.sdk:rest-api-sdk:1.14.0'
 
-    compileOnly group: 'io.springfox', name: 'springfox-swagger2', version: '2.5.0'
-    compileOnly group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.5.0'
-    compileOnly "com.ksyun:ks3-kss-java-sdk:0.8.5"
+    implementation group: 'io.springfox', name: 'springfox-swagger2', version: '2.5.0'
+    implementation group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.5.0'
+    implementation "com.ksyun:ks3-kss-java-sdk:0.8.5"
 
-    runtimeOnly 'com.mysql:mysql-connector-j'
+    // runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 }
 
-tasks.named('test') {
+/*tasks.named('test') {
     useJUnitPlatform()
-}
+}*/
