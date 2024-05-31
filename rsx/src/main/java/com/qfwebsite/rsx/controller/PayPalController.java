@@ -116,6 +116,36 @@ public class PayPalController {
         }
     }
 
+    /**
+     * js购买按钮的支付-------暂时不考虑使用
+     * @param orderInfoRequest
+     * @return
+     */
+    @PostMapping("/paypal/but/pay/success")
+    public SimpleResponse toButPaySuccess(@RequestBody @Valid OrderInfoRequest orderInfoRequest) {
+        /*try {
+            // 1. 校验请求参数是否正确
+            if (!parameterVerification(orderInfoRequest)) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "param error");
+            }
+            // 价格转化
+            BigDecimal payAmount = new BigDecimal(orderInfoRequest.getOrderPrice());
+            BigDecimal price = new BigDecimal(orderInfoRequest.getPrice());
+
+            // 4. 保存paypal预支付信息
+            orderInfoService.saveOrderInfo(orderInfoRequest, payment.getId(), param.get("token"));
+            return ResponseUtils.createOkResponse(url);
+
+        } catch (PayPalRESTException e) {
+            log.error(e.getMessage());
+            return ResponseUtils.createOkResponse(HttpCode.PAY_HTTP_EX, "pay exception");
+        } catch (Exception e) {
+            log.error(e.getMessage());
+            return ResponseUtils.createOkResponse(HttpCode.INVALID_PRICE, "invalid parameter OrderPrice");
+        }*/
+        return null;
+    }
+
 
     /**
      * 回调
