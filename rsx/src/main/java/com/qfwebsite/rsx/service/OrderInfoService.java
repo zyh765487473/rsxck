@@ -47,7 +47,7 @@ public class OrderInfoService {
         orderInfoRepository.save(orderInfo);
     }
 
-    public void updateOrderState(Integer state, String paypalId, String token) {
+    public OrderInfo updateOrderState(Integer state, String paypalId, String token) {
         OrderInfo byPaypalId = null;
         if (StringUtils.isBlank(token)) {
             byPaypalId = orderInfoRepository.findByPaypalId(paypalId);
@@ -57,8 +57,9 @@ public class OrderInfoService {
 
         if (null == byPaypalId) {
             logger.warn("update orderInfoRepository is null paypalId:{}, token:{}", paypalId, token);
-            return;
+            return null;
         }
         orderInfoRepository.updateState(state, byPaypalId.getPaypalId());
+        return byPaypalId;
     }
 }

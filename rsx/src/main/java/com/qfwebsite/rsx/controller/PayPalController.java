@@ -6,10 +6,12 @@ import com.paypal.base.rest.APIContext;
 import com.paypal.base.rest.PayPalRESTException;
 import com.qfwebsite.rsx.bean.OrderInfo;
 import com.qfwebsite.rsx.bean.Product;
+import com.qfwebsite.rsx.error.RequestFailedException;
 import com.qfwebsite.rsx.register.PaypalConfig;
 import com.qfwebsite.rsx.register.PaypalPaymentIntent;
 import com.qfwebsite.rsx.register.PaypalPaymentMethod;
 import com.qfwebsite.rsx.request.OrderInfoRequest;
+import com.qfwebsite.rsx.service.DiscountCodeService;
 import com.qfwebsite.rsx.service.OrderInfoService;
 import com.qfwebsite.rsx.service.ProductService;
 import com.qfwebsite.rsx.utils.*;
@@ -20,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
+import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.io.IOException;
@@ -31,7 +34,7 @@ import java.util.Map;
 @Api(tags = "paypal购买接口")
 @RestController
 public class PayPalController {
-    private Logger log = LoggerFactory.getLogger(getClass());
+    private static final Logger log = LoggerFactory.getLogger(PayPalController.class);
 
     @Autowired
     private APIContext apiContext;
@@ -56,6 +59,9 @@ public class PayPalController {
     @Autowired
     private ProductService productService;
 
+    @Autowired
+    private DiscountCodeService discountCodeService;
+
     @PostMapping("/paypal/pay")
     public SimpleResponse toPay(@RequestBody @Valid OrderInfoRequest orderInfoRequest) {
         try {
@@ -72,8 +78,13 @@ public class PayPalController {
                 return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "product error");
             }
 
+            // 3.校验优惠卷信息
+            String discountCode = orderInfoRequest.getDiscountCode();
+            if (!StringUtils.isBlank(discountCode)) {
+                discountCodeService.getDiscountCode(discountCode);
+            }
 
-            // 3. 购买下单
+            // 4. 购买下单
             Map<String, String> otherInfo = orderInfoRequest.getOtherInfo();
             Payment payment = createPayment(
                     payAmount,
@@ -103,10 +114,13 @@ public class PayPalController {
                 return ResponseUtils.createOkResponse(HttpCode.PAY_HTTP_EX, "pay exception");
             }
 
-            // 4. 保存paypal预支付信息
+            // 5. 保存paypal预支付信息
             orderInfoService.saveOrderInfo(orderInfoRequest, payment.getId(), param.get("token"));
+
             return ResponseUtils.createOkResponse(url);
 
+        } catch (RequestFailedException e) {
+            return ResponseUtils.createOkResponse(e.getCode(), e.getMessage());
         } catch (PayPalRESTException e) {
             log.error(e.getMessage());
             return ResponseUtils.createOkResponse(HttpCode.PAY_HTTP_EX, "pay exception");
@@ -118,6 +132,7 @@ public class PayPalController {
 
     /**
      * js购买按钮的支付-------暂时不考虑使用
+     *
      * @param orderInfoRequest
      * @return
      */
@@ -158,27 +173,58 @@ public class PayPalController {
      */
     @GetMapping("/paypal/success")
     public void successPay(HttpServletResponse response, @RequestParam("paymentId") String paymentId, @RequestParam("PayerID") String payerId) {
-        log.info("================================payPal 回调成功===================================" + paymentId);
-        log.info("================================payPal 回调成功===================================" + payerId);
+        log.info("================================payPal success===================================" + paymentId);
+        log.info("================================payPal success===================================" + payerId);
+        OrderInfo orderInfo = null;
         try {
             Payment payment = executePayment(paymentId, payerId);
             log.info("================================payment===================================");
             log.info(payment.toString());
             log.info("================================payment===================================");
             if (payment.getState().equals("approved")) {
+                log.info("================================approved===================================");
                 //修改订单状态
-                orderInfoService.updateOrderState(OrderInfo.SUCCESS_PAY, paymentId, null);
+                log.info("================================updateOrderState start===================================");
+                orderInfo = orderInfoService.updateOrderState(OrderInfo.SUCCESS_PAY, paymentId, null);
+                log.info("================================updateOrderState over===================================");
                 response.sendRedirect(PAYPAL_SUCCESS_PAGE);
             } else {
                 response.sendRedirect(PAYPAL_CANCEL_PAGE);
             }
 
         } catch (PayPalRESTException e) {
-            log.info("!!!!!!!!!!!!!!支付回调失败 异常!!!!!!!!!!!!!!");
+            log.info("!!!!!!!!!!!!!!PayPalRESTException!!!!!!!!!!!!!!");
             log.error(e.getMessage());
-            log.info("!!!!!!!!!!!!!!支付回调失败 异常!!!!!!!!!!!!!!");
+            log.info("paymentId:{}, payerId:{}", paymentId, payerId);
         } catch (IOException e) {
+            log.info("!!!!!!!!!!!!!!IOException!!!!!!!!!!!!!!");
             e.printStackTrace();
+            log.info("paymentId:{}, payerId:{}", paymentId, payerId);
+        }
+
+        // 不要影响回调，除了必要的订单状态以外
+        try {
+            if (null != orderInfo) {
+                // 发送邮件
+                log.info("================================sendBuySuccessMail start===================================");
+                MailUtils.sendBuySuccessMail(orderInfo.getEmail());
+                log.info("================================sendBuySuccessMail over===================================");
+                // 修改优惠卷状态
+                if (!StringUtils.isBlank(orderInfo.getDiscountCode())) {
+                    log.info("================================updateDiscountCode start===================================");
+                    discountCodeService.updateDiscountCode(orderInfo.getDiscountCode());
+                    log.info("================================updateDiscountCode over===================================");
+                }
+            }else {
+                log.info("================================orderInfo is null===================================");
+                log.info("paymentId:{}, payerId:{}", paymentId, payerId);
+            }
+        } catch (MessagingException e) {
+            log.info("MessagingException e:{}", e.getMessage());
+            log.info("paymentId:{}, payerId:{}", paymentId, payerId);
+        } catch (Exception e) {
+            log.info("Exception e:{}", e.getMessage());
+            log.info("paymentId:{}, payerId:{}", paymentId, payerId);
         }
     }
 

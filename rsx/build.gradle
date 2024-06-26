@@ -25,6 +25,7 @@ dependencies {
     implementation group: 'io.springfox', name: 'springfox-swagger2', version: '2.5.0'
     implementation group: 'io.springfox', name: 'springfox-swagger-ui', version: '2.5.0'
     implementation "com.ksyun:ks3-kss-java-sdk:0.8.5"
+    implementation 'com.sun.mail:javax.mail:1.5.6'
 
     // runtimeOnly 'com.mysql:mysql-connector-j'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

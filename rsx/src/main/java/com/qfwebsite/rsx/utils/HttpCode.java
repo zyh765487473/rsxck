@@ -29,4 +29,14 @@ public class HttpCode {
 
     // 请求paypal异常
     public static final int PAY_HTTP_EX = 1003;
+
+    // 优惠卷模块
+    // 优惠卷已存在
+    public static final int DISCOUNT_CODE_EXISTENCE = 2001;
+
+    // 优惠卷已失效
+    public static final int DISCOUNT_CODE_INVALID = 2002;
+
+    // 优惠卷不存在
+    public static final int DISCOUNT_CODE_NOT_EXISTENCE = 2003;
 }
