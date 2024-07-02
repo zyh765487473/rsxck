@@ -62,16 +62,10 @@ public class DiscountCodeController {
      * 参数校验
      */
     public boolean parameterVerification(String data, String md5) {
-        String str = data + "4f5af48e7ate8whfkjawA*456";
+        String str = data + MD5_STR;
         String pa = CryptoUtils.MD5(str);
         logger.info("str:{}", str);
         logger.info("pa:{}", pa);
         return pa.equals(md5);
     }
-
-    public static void main(String[] args) {
-        new DiscountCodeController().parameterVerification("927c924bd0d566c762e223c4702b4853","1");
-    }
-
-
 }

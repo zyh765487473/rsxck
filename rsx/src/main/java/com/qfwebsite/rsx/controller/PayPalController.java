@@ -4,6 +4,7 @@ import com.ksyun.ks3.utils.StringUtils;
 import com.paypal.api.payments.*;
 import com.paypal.base.rest.APIContext;
 import com.paypal.base.rest.PayPalRESTException;
+import com.qfwebsite.rsx.bean.DiscountCode;
 import com.qfwebsite.rsx.bean.OrderInfo;
 import com.qfwebsite.rsx.bean.Product;
 import com.qfwebsite.rsx.error.RequestFailedException;
@@ -11,6 +12,7 @@ import com.qfwebsite.rsx.register.PaypalConfig;
 import com.qfwebsite.rsx.register.PaypalPaymentIntent;
 import com.qfwebsite.rsx.register.PaypalPaymentMethod;
 import com.qfwebsite.rsx.request.OrderInfoRequest;
+import com.qfwebsite.rsx.response.DiscountCodeResponse;
 import com.qfwebsite.rsx.service.DiscountCodeService;
 import com.qfwebsite.rsx.service.OrderInfoService;
 import com.qfwebsite.rsx.service.ProductService;
@@ -81,7 +83,24 @@ public class PayPalController {
             // 3.校验优惠卷信息
             String discountCode = orderInfoRequest.getDiscountCode();
             if (!StringUtils.isBlank(discountCode)) {
-                discountCodeService.getDiscountCode(discountCode);
+                DiscountCodeResponse disRes = discountCodeService.getDiscountCode(discountCode);
+                Integer discountType = disRes.getDiscountType();
+                Integer num = orderInfoRequest.getNum();
+                double p = (price.doubleValue() * num);
+                if (DiscountCode.DISCOUNT_TYPE_CASH == discountType) {
+                    p = p - disRes.getCash();
+                    if (Math.abs(p - payAmount.doubleValue()) > 1) {
+                        // 价格转换以后两个值不对等
+                        return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "param cash error");
+                    }
+                }
+                if (DiscountCode.DISCOUNT_TYPE_PROPORTION == discountType) {
+                    p = p * ((100 - disRes.getProportion()) / 100);
+                    if (Math.abs(p - payAmount.doubleValue()) > 1) {
+                        // 价格转换以后两个值不对等
+                        return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "param proportion error");
+                    }
+                }
             }
 
             // 4. 购买下单
@@ -215,7 +234,7 @@ public class PayPalController {
                     discountCodeService.updateDiscountCode(orderInfo.getDiscountCode());
                     log.info("================================updateDiscountCode over===================================");
                 }
-            }else {
+            } else {
                 log.info("================================orderInfo is null===================================");
                 log.info("paymentId:{}, payerId:{}", paymentId, payerId);
             }
