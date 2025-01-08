@@ -53,4 +53,10 @@ public class HttpCode {
 
     // 不是公库数据不能分配
     public static final int GEN_ERROR = 2006;
+
+    // 不是流失词数据
+    public static final int LOSS_ERROR = 2007;
+
+    // 第一归属人错误
+    public static final int BELONGING_PERSON_ERROR = 2008;
 }

@@ -27,11 +27,17 @@ import java.util.Date;
 @NoArgsConstructor
 public class Lexicon {
 
-    // 已上架
-    public static final Integer YES_STATE = 1;
+    // 已完成全部
+    public static final Integer TWO_STATE = 2;
+
+    // 已上主图
+    public static final Integer ONE_STATE = 1;
 
     // 未上架
     public static final Integer NOT_STATE = 0;
+
+    // 流拍
+    public static final Integer LOSS_GENERAL = 2;
 
     // 公
     public static final Integer YES_GENERAL = 1;

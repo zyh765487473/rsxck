@@ -121,16 +121,17 @@ public class LexiconService {
         } else {
             // 3种情况
             // 1：是否在公池内，2：是否过期， 3：是否是同一个组的人对其进行操作
-            if (lexicon.getGeneral() == Lexicon.YES_GENERAL) {
+            if (lexicon.getGeneral() != Lexicon.NOT_GENERAL) {
                 logger.warn("updateLexicon General error id:{}, nameId:{}", param.getId(), param.getNameId());
                 // 公池产品
                 throw new RequestFailedException(HttpCode.ACCOUNT_NOT_EXISTENT, "非常遗憾，属于公词产品，无权修改");
             }
-
-            if (lexicon.getValidity().getTime() < new Date().getTime() && !param.getType().equals("2")) {
-                logger.warn("updateLexicon Validity error id:{}, nameId:{}", param.getId(), param.getNameId());
-                // 已过有效期
-                throw new RequestFailedException(HttpCode.VALIDITY_TIME_INVALID, "非常遗憾，已经过了有效期，无权修改");
+            if (null != lexicon.getValidity()) {
+                if (lexicon.getValidity().getTime() < new Date().getTime() && !param.getType().equals("2") && !param.getType().equals("1")) {
+                    logger.warn("updateLexicon Validity error id:{}, nameId:{}", param.getId(), param.getNameId());
+                    // 已过有效期
+                    throw new RequestFailedException(HttpCode.VALIDITY_TIME_INVALID, "非常遗憾，已经过了有效期，无权修改");
+                }
             }
 
             if (lexicon.getNameId() != param.getNameId()) {
@@ -141,16 +142,23 @@ public class LexiconService {
 
             if (param.getType().equals("0")) {
                 // 上架状态更新
-                if (lexicon.getState() == Lexicon.YES_STATE) {
+                if (lexicon.getState() != Lexicon.NOT_STATE) {
                     logger.warn("updateLexicon NameId error id:{}, nameId:{}", param.getId(), param.getNameId());
-                    throw new RequestFailedException(HttpCode.VALIDITY_UP_STATUS, "词的状态已经是已上架状态，请勿重复更新");
+                    throw new RequestFailedException(HttpCode.VALIDITY_UP_STATUS, "该词的状态不是未上架状态，请检查");
                 }
                 if (StringUtils.isBlank(param.getLink())) {
                     // 抛异常
                     throw new RequestFailedException(HttpCode.VALIDITY_LINK, "链接不能为空");
                 }
                 lexicon.setLink(param.getLink());
-                lexicon.setState(Lexicon.YES_STATE);
+                lexicon.setState(Lexicon.ONE_STATE);
+
+                // 第二阶段的有效期重置
+                if (null != lexicon.getValidity()) {
+                    Date date = new Date();
+                    date.setTime(lexicon.getValidity().getTime() + 1000 * 60 * 60 * 24 * 3);
+                    lexicon.setValidity(date);
+                }
             } else if (param.getType().equals("1")) {
                 // 品牌注册状态更新
                 if (lexicon.getRegistrationStatus().equals("已注册")) {
@@ -161,6 +169,13 @@ public class LexiconService {
             } else if (param.getType().equals("2")) {
                 // 备注修改
                 lexicon.setRemarks(param.getRemarks());
+            } else if (param.getType().equals("3")) {
+                // 上架状态更新
+                if (lexicon.getState() != Lexicon.ONE_STATE) {
+                    logger.warn("updateLexicon NameId error id:{}, nameId:{}", param.getId(), param.getNameId());
+                    throw new RequestFailedException(HttpCode.VALIDITY_UP_STATUS, "请先将词更新至已上主图状态");
+                }
+                lexicon.setState(Lexicon.TWO_STATE);
             } else {
                 throw new RequestFailedException(HttpCode.INNER_ERROR, "更新状态有误，请联系管理员");
             }
@@ -175,7 +190,7 @@ public class LexiconService {
         if (null == lexicon || StringUtils.isBlank(lexicon.getBrandName())) {
             logger.warn("updateLexiconAdmin error id:{}", id);
         } else {
-            if (lexicon.getGeneral() == Lexicon.NOT_GENERAL) {
+            if (lexicon.getGeneral() != Lexicon.YES_GENERAL) {
                 throw new RequestFailedException(HttpCode.GEN_ERROR, "不是公库数据，请勿重复分配");
             }
             lexicon.setNameId(nameId);
@@ -185,12 +200,59 @@ public class LexiconService {
             lexicon.setUpdateTime(new Date());
             lexicon.setState(Lexicon.NOT_STATE);
             lexicon.setGeneral(Lexicon.NOT_GENERAL);
+            lexicon.setLink(null);
+            lexiconRepository.save(lexicon);
+        }
+    }
+
+    // admin的公库流拍状态更新
+    public void updateLexiconLossAdmin(Long id) {
+        Lexicon lexicon = lexiconRepository.findById(id).get();
+        if (null == lexicon || StringUtils.isBlank(lexicon.getBrandName())) {
+            logger.warn("updateLexiconAdmin error id:{}", id);
+        } else {
+            if (lexicon.getGeneral() != Lexicon.YES_GENERAL) {
+                throw new RequestFailedException(HttpCode.GEN_ERROR, "不是公库数据，请勿流拍");
+            }
+            lexicon.setUpdateTime(new Date());
+            lexicon.setGeneral(Lexicon.LOSS_GENERAL);
+            lexiconRepository.save(lexicon);
+        }
+    }
+
+    // 流拍词申请授权
+    public void LossLexiconApply(Long id, Integer nameId, Integer flow) {
+        // 1. 谁申请的，要对比申请人是否是当前词选择第一人
+        // 2. 该词的状态是否是流失词状态
+        // 3. 处理细节：更新词归属,根据流量更新有效时间，更新词状态，更新词公词状态，更新上架链接，更新流量
+        Lexicon lexicon = lexiconRepository.findById(id).get();
+        if (null == lexicon || StringUtils.isBlank(lexicon.getBrandName())) {
+            logger.warn("LossLexiconApply error id:{}", id);
+        } else {
+            if (lexicon.getGeneral() != Lexicon.LOSS_GENERAL) {
+                throw new RequestFailedException(HttpCode.LOSS_ERROR, "不是流失库数据，请刷新");
+            }
+            if (nameId == lexicon.getNameId()) {
+                throw new RequestFailedException(HttpCode.BELONGING_PERSON_ERROR, "对不起，你是该词第一所有人，根据规则无法认领");
+            }
+            lexicon.setNameId(nameId);
+            // 计算有效期
+            lexicon.setFlow(flow);
+            lexicon.setValidity(calculateValidity(flow));
+            lexicon.setUpdateTime(new Date());
+            lexicon.setState(Lexicon.NOT_STATE);
+            lexicon.setGeneral(Lexicon.NOT_GENERAL);
+            lexicon.setLink(null);
             lexiconRepository.save(lexicon);
         }
     }
 
     public List<Lexicon> getGeneral() {
         return lexiconRepository.findByGeneral(Lexicon.YES_GENERAL);
+    }
+
+    public List<Lexicon> getLoss() {
+        return lexiconRepository.findByGeneral(Lexicon.LOSS_GENERAL);
     }
 
     public void saveLexicon(String brandName, String completeWord, String independentStation, Integer flow, Integer nameId, String country) {
@@ -315,11 +377,11 @@ public class LexiconService {
     private Date calculateValidity(Integer flow) {
         Date date = new Date();
         if (flow > 100000) {
-            // 14天
-            date.setTime(date.getTime() + 1000 * 60 * 60 * 24 * 14);
-        } else {
-            // 7天
+            // 7天  --- 第一阶段
             date.setTime(date.getTime() + 1000 * 60 * 60 * 24 * 7);
+        } else {
+            // 2天  ---- 第一阶段
+            date.setTime(date.getTime() + 1000 * 60 * 60 * 24 * 2);
         }
         return date;
     }

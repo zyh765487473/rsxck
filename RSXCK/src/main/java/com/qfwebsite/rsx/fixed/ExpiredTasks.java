@@ -23,10 +23,32 @@ public class ExpiredTasks {
     public void wordManagement() {
         // 获取未上架数据
         List<Lexicon> notState = lexiconRepository.findByStateAndRegistrationStatusAndGeneral(Lexicon.NOT_STATE, "未注册", Lexicon.NOT_GENERAL);
+        List<Lexicon> one = lexiconRepository.findByStateAndRegistrationStatusAndGeneral(Lexicon.ONE_STATE, "未注册", Lexicon.NOT_GENERAL);
         if (null != notState && !notState.isEmpty()) {
             Date date = new Date();
             long time = date.getTime();
             notState.forEach(a -> {
+                Date validity = a.getValidity();
+                if (null != validity) {
+                    long l = validity.getTime();
+                    if (time > l) {
+                        // 当前时间大于有效期，说明已过期
+                        a.setGeneral(Lexicon.YES_GENERAL);
+                        a.setUpdateTime(new Date());
+                        lexiconRepository.save(a);
+                    }
+                } else {
+                    // 这样的产品理论上属于公司。随时上下架
+                }
+            });
+        }
+
+        // 第二阶段的检索
+        // todo 注意这个要在历史数据处理完以后才可以部署
+        if (null != one && !one.isEmpty()) {
+            Date date = new Date();
+            long time = date.getTime();
+            one.forEach(a -> {
                 Date validity = a.getValidity();
                 if (null != validity) {
                     long l = validity.getTime();

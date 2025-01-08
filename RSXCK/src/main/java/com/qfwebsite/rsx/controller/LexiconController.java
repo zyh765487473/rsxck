@@ -2,9 +2,7 @@ package com.qfwebsite.rsx.controller;
 
 import com.ksyun.ks3.utils.StringUtils;
 import com.qfwebsite.rsx.error.RequestFailedException;
-import com.qfwebsite.rsx.request.LexiconRequest;
-import com.qfwebsite.rsx.request.LexiconUpdateAdminRequest;
-import com.qfwebsite.rsx.request.LexiconUpdateRequest;
+import com.qfwebsite.rsx.request.*;
 import com.qfwebsite.rsx.service.AccountService;
 import com.qfwebsite.rsx.service.LexiconService;
 import com.qfwebsite.rsx.utils.CryptoUtils;
@@ -106,6 +104,27 @@ public class LexiconController {
         }
     }
 
+    @GetMapping("/lexicon/select/loss")
+    public SimpleResponse selectLoss(@RequestParam("nameId") Integer nameId, @RequestParam("token") String token, @RequestParam("md5") String md5) {
+        try {
+            // 1. 校验请求参数是否正确
+            if (StringUtils.isBlank(token) || null == nameId || StringUtils.isBlank(md5)) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "参数错误，请联系管理员");
+            }
+            if (!parameterVerification(nameId + token, md5)) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "参数错误，请联系管理员");
+            }
+            accountService.loginVerification(token, nameId);
+
+            return ResponseUtils.createOkResponse(lexiconService.getLoss());
+        } catch (RequestFailedException e) {
+            return ResponseUtils.createOkResponse(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            return ResponseUtils.createOkResponse(HttpCode.INNER_ERROR, "内部错误，请联系管理员");
+        }
+    }
+
     @PostMapping("/lexicon/update/general/admin")
     public SimpleResponse updateGeneral(@RequestBody @Valid LexiconUpdateAdminRequest param) {
         try {
@@ -122,6 +141,53 @@ public class LexiconController {
             accountService.loginVerification(param.getToken(), param.getNameId());
 
             lexiconService.updateLexiconAdmin(param.getId(), param.getFlow(), param.getaNameId());
+            return ResponseUtils.createOkResponse();
+        } catch (RequestFailedException e) {
+            return ResponseUtils.createOkResponse(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            return ResponseUtils.createOkResponse(HttpCode.INNER_ERROR, "内部错误，请联系管理员");
+        }
+    }
+
+    @PostMapping("/lexicon/update/loss/admin")
+    public SimpleResponse updateGeneral(@RequestBody @Valid LexiconUpdateLoseAdminRequest param) {
+        try {
+            // 1. 校验请求参数是否正确
+            if (StringUtils.isBlank(param.getToken()) || null == param.getNameId() || StringUtils.isBlank(param.getMd5())) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "参数错误，请联系管理员");
+            }
+            if (!parameterVerification(param.getNameId() + param.getToken(), param.getMd5())) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "参数错误，请联系管理员");
+            }
+            if (1 != (param.getNameId())) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "参数错误，请联系管理员");
+            }
+            accountService.loginVerification(param.getToken(), param.getNameId());
+
+            lexiconService.updateLexiconLossAdmin(param.getId());
+            return ResponseUtils.createOkResponse();
+        } catch (RequestFailedException e) {
+            return ResponseUtils.createOkResponse(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            logger.error(e.getMessage());
+            return ResponseUtils.createOkResponse(HttpCode.INNER_ERROR, "内部错误，请联系管理员");
+        }
+    }
+
+    @PostMapping("/lexicon/loss/apply")
+    public SimpleResponse applyLoss(@RequestBody @Valid LossLexiconRequest param) {
+        try {
+            // 1. 校验请求参数是否正确
+            if (StringUtils.isBlank(param.getToken()) || null == param.getNameId() || StringUtils.isBlank(param.getMd5())) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "参数错误，请联系管理员");
+            }
+            if (!parameterVerification(param.getNameId() + param.getToken(), param.getMd5())) {
+                return ResponseUtils.createOkResponse(HttpCode.PARAMS_INVALID, "参数错误，请联系管理员");
+            }
+            accountService.loginVerification(param.getToken(), param.getNameId());
+
+            lexiconService.LossLexiconApply(param.getId(), param.getNameId(), param.getFlow());
             return ResponseUtils.createOkResponse();
         } catch (RequestFailedException e) {
             return ResponseUtils.createOkResponse(e.getCode(), e.getMessage());
